@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Page
+    x:Class="BusinessProcessAgent.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="24" MaxWidth="640">
+
+            <!-- Header -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button Content="← Back" Click="OnBack"/>
+                <TextBlock Text="Settings" FontSize="22" FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- AI Configuration -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Azure OpenAI" FontSize="18" FontWeight="SemiBold"/>
+                <ToggleSwitch x:Name="toggleAiEnabled" Header="AI Analysis Enabled"
+                              Toggled="OnAiToggled"/>
+                <TextBox x:Name="txtEndpoint" Header="Endpoint URL"
+                         PlaceholderText="https://your-resource.openai.azure.com/"/>
+                <PasswordBox x:Name="txtApiKey" Header="API Key"
+                             PlaceholderText="Enter your API key"/>
+                <TextBox x:Name="txtModel" Header="Model Deployment Name"
+                         PlaceholderText="gpt-4o-mini"/>
+            </StackPanel>
+
+            <!-- Observation Settings -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Observation" FontSize="18" FontWeight="SemiBold"/>
+                <NumberBox x:Name="numPollingInterval" Header="Polling Interval (seconds)"
+                           Minimum="1" Maximum="60" Value="5" SpinButtonPlacementMode="Compact"/>
+                <NumberBox x:Name="numCaptureInterval" Header="Screenshot Interval (seconds)"
+                           Minimum="5" Maximum="300" Value="15" SpinButtonPlacementMode="Compact"/>
+                <ToggleSwitch x:Name="toggleCaptureOnChange"
+                              Header="Capture on Application Change" IsOn="True"/>
+            </StackPanel>
+
+            <!-- Compliance Settings -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Compliance &amp; Privacy" FontSize="18" FontWeight="SemiBold"/>
+                <ToggleSwitch x:Name="toggleEphemeral"
+                              Header="Ephemeral Screenshots (never saved to disk)"/>
+                <ToggleSwitch x:Name="toggleEncrypt"
+                              Header="Encrypt Data at Rest" IsOn="True"/>
+                <ToggleSwitch x:Name="toggleAudit"
+                              Header="Audit Logging" IsOn="True"/>
+                <ToggleSwitch x:Name="toggleRedactScreenshots"
+                              Header="Redact Screenshots Before LLM" IsOn="True"/>
+                <NumberBox x:Name="numRetention" Header="Data Retention (days, 0 = forever)"
+                           Minimum="0" Maximum="365" Value="30" SpinButtonPlacementMode="Compact"/>
+                <TextBox x:Name="txtExcludedApps"
+                         Header="Excluded Applications (comma-separated)"
+                         PlaceholderText="1Password, KeePass, mstsc"/>
+                <TextBox x:Name="txtExcludedKeywords"
+                         Header="Excluded Title Keywords (comma-separated)"
+                         PlaceholderText="password, credential, secret"/>
+                <TextBox x:Name="txtRedactionKeywords"
+                         Header="Redaction Keywords (comma-separated)"
+                         PlaceholderText="ClientName, ProjectCodename"/>
+            </StackPanel>
+
+            <!-- Save -->
+            <Button Content="Save Settings" Click="OnSave"
+                    Style="{StaticResource PrimaryAction}"
+                    HorizontalAlignment="Left"/>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

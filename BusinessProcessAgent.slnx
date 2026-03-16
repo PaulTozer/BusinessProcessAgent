@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BusinessProcessAgent.App/BusinessProcessAgent.App.csproj">
+      <Platform Project="x86" />
+    </Project>
+    <Project Path="src/BusinessProcessAgent.Core/BusinessProcessAgent.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BusinessProcessAgent.Core.Tests/BusinessProcessAgent.Core.Tests.csproj" />
+  </Folder>
+</Solution>

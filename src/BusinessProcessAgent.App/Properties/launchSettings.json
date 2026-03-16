@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "BusinessProcessAgent.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "BusinessProcessAgent.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
