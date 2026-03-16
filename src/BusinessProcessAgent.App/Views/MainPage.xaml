@@ -26,6 +26,12 @@
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
             <ToggleButton x:Name="btnObserve" Content="Start Observing"
                           Click="OnObserveToggle"/>
+            <Button x:Name="btnDiscard" Content="Discard &amp; Restart"
+                    Click="OnDiscardRestart"
+                    IsEnabled="False"/>
+            <Button x:Name="btnClearAll" Content="Clear All Data"
+                    Click="OnClearAll"/>
+            <AppBarSeparator/>
             <Button x:Name="btnViewProcesses" Content="View Processes"
                     Click="OnViewProcesses" Style="{StaticResource PrimaryAction}"/>
             <Button x:Name="btnSettings" Content="Settings"

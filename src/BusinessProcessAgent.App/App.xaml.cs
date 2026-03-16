@@ -83,6 +83,13 @@ namespace BusinessProcessAgent.App
             window ??= new Window();
             window.Title = "Business Process Agent";
 
+            // Set a reasonable default window size
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
+            var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+            appWindow.Resize(new Windows.Graphics.SizeInt32(900, 680));
+            appWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app-icon.ico"));
+
             if (window.Content is not Frame rootFrame)
             {
                 rootFrame = new Frame();

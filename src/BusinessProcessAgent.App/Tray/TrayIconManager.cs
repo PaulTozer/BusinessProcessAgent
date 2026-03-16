@@ -48,7 +48,9 @@ internal sealed class TrayIconManager : IDisposable
         _dispatcher = dispatcher;
         _logger = logger;
 
-        _tray = new TrayIcon("Business Process Agent — Idle");
+        _tray = new TrayIcon(
+            "Business Process Agent — Idle",
+            Path.Combine(AppContext.BaseDirectory, "Assets", "app-icon.ico"));
         _tray.LeftClick += OnLeftClick;
         _tray.RightClick += OnRightClick;
 

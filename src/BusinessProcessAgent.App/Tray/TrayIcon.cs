@@ -30,7 +30,7 @@ internal sealed class TrayIcon : IDisposable
     /// <summary>Fired when the user right-clicks the tray icon.</summary>
     public event Action? RightClick;
 
-    public TrayIcon(string tooltip)
+    public TrayIcon(string tooltip, string? iconPath = null)
     {
         _messageWindow = new TrayMessageWindow(OnTrayMessage);
 
@@ -42,7 +42,7 @@ internal sealed class TrayIcon : IDisposable
             uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE,
             uCallbackMessage = WM_APP_TRAYICON,
             szTip = tooltip,
-            hIcon = LoadDefaultIcon(),
+            hIcon = LoadIconFromFile(iconPath),
         };
 
         Shell_NotifyIcon(NIM_ADD, ref _nid);
@@ -64,10 +64,15 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
-    private static IntPtr LoadDefaultIcon()
+    private static IntPtr LoadIconFromFile(string? path)
     {
-        // Use the default application icon
-        return LoadIcon(IntPtr.Zero, new IntPtr(32512)); // IDI_APPLICATION
+        if (path is not null && System.IO.File.Exists(path))
+        {
+            // LoadImage with LR_LOADFROMFILE for .ico files
+            var hIcon = LoadImage(IntPtr.Zero, path, IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+            if (hIcon != IntPtr.Zero) return hIcon;
+        }
+        return LoadIcon(IntPtr.Zero, new IntPtr(32512)); // IDI_APPLICATION fallback
     }
 
     public void Dispose()
@@ -86,6 +91,13 @@ internal sealed class TrayIcon : IDisposable
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr LoadIcon(IntPtr hInstance, IntPtr lpIconName);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr LoadImage(IntPtr hInst, string name, uint type,
+        int cx, int cy, uint fuLoad);
+
+    private const uint IMAGE_ICON = 1;
+    private const uint LR_LOADFROMFILE = 0x0010;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct NOTIFYICONDATA

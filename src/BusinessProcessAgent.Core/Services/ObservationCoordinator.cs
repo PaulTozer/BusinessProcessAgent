@@ -142,6 +142,50 @@ public sealed class ObservationCoordinator : IDisposable
     public Task<IReadOnlyList<ObservationSession>> GetSessionsAsync(int take = 20)
         => _store.GetSessionsAsync(take);
 
+    /// <summary>
+    /// Stops observation, discards the current session's data, and
+    /// optionally starts a fresh session. Deletes screenshots from disk.
+    /// </summary>
+    public async Task DiscardCurrentAndRestartAsync()
+    {
+        var sessionToDiscard = _currentSession?.Id;
+        bool wasObserving = IsObserving;
+
+        await StopAsync();
+
+        if (sessionToDiscard is not null)
+        {
+            var screenshotPaths = await _store.DeleteSessionAsync(sessionToDiscard);
+            CleanupScreenshots(screenshotPaths);
+            _logger.LogInformation("Discarded session {SessionId}", sessionToDiscard);
+        }
+
+        if (wasObserving)
+            await StartAsync();
+    }
+
+    /// <summary>
+    /// Stops observation and deletes ALL recorded data (every session, step,
+    /// and screenshot). Use when the user wants a completely clean slate.
+    /// </summary>
+    public async Task ClearAllDataAsync()
+    {
+        await StopAsync();
+
+        var screenshotPaths = await _store.ClearAllAsync();
+        CleanupScreenshots(screenshotPaths);
+        _logger.LogInformation("All data cleared ({Count} screenshots removed)", screenshotPaths.Count);
+    }
+
+    private void CleanupScreenshots(IReadOnlyList<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            try { if (File.Exists(path)) File.Delete(path); }
+            catch { /* best-effort cleanup */ }
+        }
+    }
+
     private void OnContextChanged(ApplicationContext context)
     {
         // ── Exclusion checks ──

@@ -44,6 +44,7 @@ namespace BusinessProcessAgent.App.Views
             if (mgr.Coordinator.IsObserving)
             {
                 btnObserve.Content = "Stop Observing";
+                btnDiscard.IsEnabled = true;
                 statusBar.Severity = InfoBarSeverity.Success;
                 statusBar.Title = "Observing";
                 statusBar.Message = "Capturing and analyzing your workflow...";
@@ -51,9 +52,66 @@ namespace BusinessProcessAgent.App.Views
             else
             {
                 btnObserve.Content = "Start Observing";
+                btnDiscard.IsEnabled = false;
                 statusBar.Severity = InfoBarSeverity.Informational;
                 statusBar.Title = "Paused";
                 statusBar.Message = "Observation paused.";
+            }
+        }
+
+        private async void OnDiscardRestart(object sender, RoutedEventArgs e)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Discard Current Session?",
+                Content = "This will delete all steps recorded in the current session and start fresh. This cannot be undone.",
+                PrimaryButtonText = "Discard & Restart",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.XamlRoot,
+            };
+
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                var mgr = App.TrayManager;
+                if (mgr is null) return;
+
+                await mgr.Coordinator.DiscardCurrentAndRestartAsync();
+                _activityItems.Clear();
+
+                statusBar.Severity = InfoBarSeverity.Success;
+                statusBar.Title = "Restarted";
+                statusBar.Message = "Previous session discarded. Fresh observation started.";
+            }
+        }
+
+        private async void OnClearAll(object sender, RoutedEventArgs e)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Clear All Data?",
+                Content = "This will permanently delete ALL recorded sessions, process steps, and screenshots. This cannot be undone.",
+                PrimaryButtonText = "Clear Everything",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.XamlRoot,
+            };
+
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                var mgr = App.TrayManager;
+                if (mgr is null) return;
+
+                await mgr.Coordinator.ClearAllDataAsync();
+                _activityItems.Clear();
+
+                btnObserve.Content = "Start Observing";
+                btnObserve.IsChecked = false;
+                btnDiscard.IsEnabled = false;
+
+                statusBar.Severity = InfoBarSeverity.Informational;
+                statusBar.Title = "Data Cleared";
+                statusBar.Message = "All sessions and screenshots have been deleted.";
             }
         }
 

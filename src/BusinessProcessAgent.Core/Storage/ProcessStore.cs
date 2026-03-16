@@ -233,6 +233,81 @@ public sealed class ProcessStore : IDisposable
         finally { _semaphore.Release(); }
     }
 
+    /// <summary>
+    /// Deletes a single session and all its steps. Returns screenshot paths
+    /// so the caller can clean up files.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> DeleteSessionAsync(string sessionId)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync();
+
+            // Collect screenshot paths before deleting
+            var paths = new List<string>();
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT screenshot_path FROM process_steps WHERE session_id = @id AND screenshot_path IS NOT NULL";
+                cmd.Parameters.AddWithValue("@id", sessionId);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                    paths.Add(reader.GetString(0));
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "DELETE FROM process_steps WHERE session_id = @id";
+                cmd.Parameters.AddWithValue("@id", sessionId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "DELETE FROM observation_sessions WHERE id = @id";
+                cmd.Parameters.AddWithValue("@id", sessionId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            _logger.LogInformation("Deleted session {SessionId} ({Screenshots} screenshots)", sessionId, paths.Count);
+            return paths;
+        }
+        finally { _semaphore.Release(); }
+    }
+
+    /// <summary>
+    /// Deletes ALL sessions, steps, and returns all screenshot paths for cleanup.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> ClearAllAsync()
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync();
+
+            var paths = new List<string>();
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT screenshot_path FROM process_steps WHERE screenshot_path IS NOT NULL";
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                    paths.Add(reader.GetString(0));
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "DELETE FROM process_steps; DELETE FROM observation_sessions; DELETE FROM business_processes;";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            _logger.LogInformation("Cleared all data ({Screenshots} screenshots)", paths.Count);
+            return paths;
+        }
+        finally { _semaphore.Release(); }
+    }
+
     private static ProcessStep ReadStep(SqliteDataReader reader)
     {
         return new ProcessStep
