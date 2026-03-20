@@ -14,6 +14,11 @@ dotnet test tests/BusinessProcessAgent.Core.Tests --filter "FullyQualifiedName~Y
 
 # Run the WinUI 3 desktop app
 dotnet run --project src/BusinessProcessAgent.App/BusinessProcessAgent.App.csproj
+
+# Run the Foundry Agent (Python, from src/BusinessProcessAgent.Agent/)
+pip install -r src/BusinessProcessAgent.Agent/requirements.txt
+python src/BusinessProcessAgent.Agent/agent.py      # HTTP server
+python src/BusinessProcessAgent.Agent/cli.py        # Interactive CLI
 ```
 
 ## Architecture
@@ -41,12 +46,17 @@ Foreground Poll → Exclusion Check → Screenshot Capture → Redact Text → R
 - `ComplianceSettings` — Admin-configurable controls: excluded apps, excluded title keywords, ephemeral mode, encryption, redaction patterns, data retention.
 
 **Storage** (`BusinessProcessAgent.Core.Storage`):
-- `ProcessStore` — SQLite-backed persistence for observation sessions, process steps, and assembled business processes. Thread-safe via `SemaphoreSlim`.
+- `ProcessStore` — PostgreSQL-backed persistence for observation sessions, process steps, and assembled business processes. Uses Npgsql. Thread-safe via `SemaphoreSlim`.
 
 **Desktop app** (`BusinessProcessAgent.App`) — WinUI 3 with Windows App SDK:
 - System tray icon via Win32 `Shell_NotifyIcon` (WinUI 3 has no built-in NotifyIcon).
 - `TrayIconManager` — Bridges Core services to the UI thread. Left-click opens main window, right-click toggles observation.
 - Three pages: `MainPage` (dashboard + live activity feed), `ProcessViewerPage` (two-pane process/step browser), `SettingsPage` (AI, observation, and compliance configuration).
+
+**Foundry Agent** (`BusinessProcessAgent.Agent`) — Python, Microsoft Agent Framework:
+- `agent.py` — Main entry point. Creates an `AzureAIClient`-based Foundry agent with deep business-analysis instructions. Runs as an HTTP server via `from_agent_framework`.
+- `cli.py` — Interactive multi-turn CLI for local testing.
+- `tools.py` — Read-only PostgreSQL tools that query the same database the desktop app writes to: `list_business_processes`, `get_process_steps`, `get_recent_activity`, `get_session_summary`, `list_sessions`, `get_application_usage_stats`, `find_process_bottlenecks`.
 
 ## Key Conventions
 
@@ -70,3 +80,5 @@ Foreground Poll → Exclusion Check → Screenshot Capture → Redact Text → R
 **UI threading**: Background callbacks marshal to the WinUI `DispatcherQueue` for UI updates. The Core library never references UI types.
 
 **Tests**: xUnit with `[Fact]` and `[Theory]`. Test method names describe the scenario.
+
+**Foundry Agent (Python)**: Uses `AzureAIClient` (not legacy `AzureAIAgentClient`). Async credentials from `azure.identity.aio`. SDK pinned to `agent-framework-*==1.0.0rc3` and `azure-ai-agentserver-*==1.0.0b16`. Entry point uses `from_agent_framework(agent).run_async()` for HTTP server mode. Deployed as an Azure Container App. Environment variables loaded via `load_dotenv(override=False)` so Foundry runtime env vars take precedence. Agent tools are read-only queries against the shared Azure PostgreSQL database via `asyncpg`.

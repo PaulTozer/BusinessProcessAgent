@@ -81,7 +81,7 @@ public sealed class ComplianceSettings
     public bool EphemeralScreenshots { get; set; } = false;
 
     /// <summary>
-    /// When true, all data written to the local SQLite database and
+    /// When true, all data written to the PostgreSQL database and
     /// screenshot files is encrypted with AES-256. The key is derived
     /// from <see cref="EncryptionKeySource"/>.
     /// </summary>

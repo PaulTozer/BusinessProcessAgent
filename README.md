@@ -8,7 +8,10 @@ The agent runs quietly in the system tray, captures the foreground window at con
 
 - Windows 10 (build 19041) or later
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- An Azure OpenAI resource with a vision-capable model deployed (e.g. `gpt-4o-mini`)
+- [Python 3.10+](https://www.python.org/downloads/) (for the Foundry Agent)
+- An Azure AI Foundry project with a model deployment (e.g. `gpt-4o`)
+- An [Azure Database for PostgreSQL Flexible Server](https://learn.microsoft.com/azure/postgresql/flexible-server/overview)
+- (For deployment) An [Azure Container App](https://learn.microsoft.com/azure/container-apps/overview) environment + [Azure Container Registry](https://learn.microsoft.com/azure/container-registry/)
 
 ## Quick Start
 
@@ -24,6 +27,25 @@ dotnet run --project src/BusinessProcessAgent.App/BusinessProcessAgent.App.cspro
 
 On first launch the app appears in the system tray. Right-click the tray icon to start an observation session. Open the main window (left-click) to configure your Azure OpenAI endpoint in **Settings**.
 
+### Run the Workflow Analyst Agent
+
+```powershell
+cd src/BusinessProcessAgent.Agent
+pip install -r requirements.txt
+
+# Copy and fill in your Azure AI Foundry credentials
+copy .env.template .env
+# Edit .env with your FOUNDRY_PROJECT_ENDPOINT, FOUNDRY_MODEL_DEPLOYMENT_NAME, and BPA_DATABASE_URL
+
+# Interactive CLI mode
+python cli.py
+
+# HTTP server mode (for Foundry deployment / Agent Inspector)
+python agent.py
+```
+
+The desktop app and the agent both connect to the same Azure PostgreSQL database, so multiple users can interact with the agent while someone else captures workflows.
+
 ## Configuration
 
 Settings are stored in `data/settings.json` and can be edited via the Settings page or by modifying the file directly.
@@ -36,6 +58,12 @@ Settings are stored in `data/settings.json` and can be edited via the Settings p
 | `azureAi.apiKey` | *(empty)* | API key for the endpoint |
 | `azureAi.model` | `gpt-4o-mini` | Deployed model name |
 | `azureAi.enabled` | `false` | Master switch for LLM analysis |
+
+### Database
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `database.connectionString` | *(empty)* | PostgreSQL connection string (e.g. `Host=myserver.postgres.database.azure.com;Port=5432;Database=bpa;Username=bpa_user;Password=***;Ssl Mode=Require;`) |
 
 ### Observation
 
@@ -86,8 +114,18 @@ Settings are stored in `data/settings.json` and can be edited via the Settings p
 │    ├─ ProcessAnalysisService  — Azure OpenAI vision call │
 │    ├─ ProcessAssembler        — group steps → processes  │
 │    ├─ EncryptionService       — AES-256-GCM at rest      │
-│    ├─ ProcessStore            — SQLite persistence       │
+│    ├─ ProcessStore            — PostgreSQL persistence   │
 │    └─ AuditLogger             — append-only TSV log      │
+└──────────────────────────────────────────────────────────┘
+                         │
+               ┌─────────▼──────────┐
+               │  Azure PostgreSQL  │  ← shared database
+               └─────────┬──────────┘
+                         │
+┌────────────────────────▼─────────────────────────────────┐
+│              Foundry Analyst Agent                        │
+│         (Azure Container App / local)                    │
+│  agent.py · cli.py · tools.py                            │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -109,6 +147,7 @@ Foreground Poll → Exclusion Check → Screenshot Capture → Redact Text
 |---------|-------------|
 | `BusinessProcessAgent.Core` | All business logic. No UI dependencies. Targets `net10.0-windows10.0.19041.0`. |
 | `BusinessProcessAgent.App` | WinUI 3 desktop app with system tray, three pages, and Windows App SDK. |
+| `BusinessProcessAgent.Agent` | Python Foundry Agent — workflow analysis, Q&A, and improvement suggestions. Deployed as an Azure Container App. |
 | `BusinessProcessAgent.Core.Tests` | xUnit test project for the Core library. |
 
 ### Domain Models
@@ -144,6 +183,71 @@ This application captures screenshots of user activity. It is designed with ente
 - **Ephemeral mode** — Screenshots can be kept in memory only and never written to disk.
 - **Audit logging** — Every capture, redaction, and LLM call is recorded in an append-only log with metadata only (no sensitive content).
 - **Data retention** — Stored data is automatically purged after a configurable number of days.
+
+## Workflow Analyst Agent
+
+The `BusinessProcessAgent.Agent` is a Microsoft Foundry Agent built with the [Microsoft Agent Framework](https://learn.microsoft.com/azure/ai-services/agents/) that analyses the workflows captured by the desktop app.
+
+### Capabilities
+
+- **Process discovery** — Lists all captured business processes with observation counts and date ranges.
+- **Step-by-step analysis** — Retrieves and reasons about the exact sequence of actions in any process.
+- **Bottleneck detection** — Identifies application switches, timing gaps, low-confidence steps, and repeated actions.
+- **Application usage stats** — Shows which apps are used most and across which processes.
+- **Improvement suggestions** — Recommends concrete changes grounded in lean methodology, automation (RPA / Power Automate), process redesign, and tooling consolidation.
+- **Business outcome reasoning** — Connects every recommendation to measurable impact: time saved, error reduction, compliance risk, employee experience, and cost.
+- **Multi-turn conversation** — Maintains session context so users can drill into specifics.
+
+### Agent Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_business_processes` | Overview of all discovered workflows |
+| `get_process_steps` | Detailed step breakdown for a specific process |
+| `get_recent_activity` | Latest observed actions across all sessions |
+| `get_session_summary` | Full summary of a single observation session |
+| `list_sessions` | Browse recent observation sessions |
+| `get_application_usage_stats` | Per-application usage statistics |
+| `find_process_bottlenecks` | Timing gaps, app switches, and low-confidence steps |
+
+### Debugging
+
+VS Code launch configurations are included for both HTTP server and CLI modes:
+
+- **Debug Agent HTTP Server** — Launches with `agentdev` + `debugpy`, then opens the AI Toolkit Agent Inspector.
+- **Debug Agent CLI** — Attaches the debugger to the interactive CLI session.
+
+Install the debug tooling:
+
+```powershell
+pip install debugpy agent-dev-cli --pre
+```
+
+Then use the **Run and Debug** panel in VS Code to select a configuration.
+
+### Deploying to Azure Container Apps
+
+Build and push the container image, then create the Container App:
+
+```bash
+# Build the container image
+az acr build --registry <your-acr> --image bpa-agent:latest src/BusinessProcessAgent.Agent/
+
+# Create the Container App
+az containerapp create \
+  --name bpa-agent \
+  --resource-group <your-rg> \
+  --environment <your-container-env> \
+  --image <your-acr>.azurecr.io/bpa-agent:latest \
+  --target-port 8080 \
+  --ingress external \
+  --env-vars \
+    FOUNDRY_PROJECT_ENDPOINT=<endpoint> \
+    FOUNDRY_MODEL_DEPLOYMENT_NAME=<model> \
+    BPA_DATABASE_URL=<postgresql-connection-url>
+```
+
+The agent runs as an HTTP server inside the container and is accessible to any authorised user.
 
 ## License
 
