@@ -6,6 +6,7 @@ namespace BusinessProcessAgent.Core.Configuration;
 public sealed class AppSettings
 {
     public AzureAiSettings AzureAi { get; set; } = new();
+    public DatabaseSettings Database { get; set; } = new();
     public ObservationSettings Observation { get; set; } = new();
     public ComplianceSettings Compliance { get; set; } = new();
 
@@ -53,4 +54,13 @@ public sealed class ObservationSettings
 
     /// <summary>Directory where screenshots are stored.</summary>
     public string ScreenshotDirectory { get; set; } = "data/screenshots";
+}
+
+public sealed class DatabaseSettings
+{
+    /// <summary>
+    /// PostgreSQL connection string.
+    /// Example: Host=myserver.postgres.database.azure.com;Port=5432;Database=bpa;Username=bpa_user;Password=***;Ssl Mode=Require;
+    /// </summary>
+    public string ConnectionString { get; set; } = string.Empty;
 }
