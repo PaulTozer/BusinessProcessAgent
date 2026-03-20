@@ -60,7 +60,6 @@ public sealed class DatabaseSettings
 {
     /// <summary>
     /// PostgreSQL connection string.
-    /// Example: Host=myserver.postgres.database.azure.com;Port=5432;Database=bpa;Username=bpa_user;Password=***;Ssl Mode=Require;
     /// </summary>
     public string ConnectionString { get; set; } = string.Empty;
 }

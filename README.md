@@ -63,7 +63,7 @@ Settings are stored in `data/settings.json` and can be edited via the Settings p
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `database.connectionString` | *(empty)* | PostgreSQL connection string (e.g. `Host=myserver.postgres.database.azure.com;Port=5432;Database=bpa;Username=bpa_user;Password=***;Ssl Mode=Require;`) |
+| `database.connectionString` | *(empty)* | PostgreSQL connection string (see [Npgsql docs](https://www.npgsql.org/doc/connection-string-parameters.html)) |
 
 ### Observation
 
@@ -248,6 +248,20 @@ az containerapp create \
 ```
 
 The agent runs as an HTTP server inside the container and is accessible to any authorised user.
+
+### Deployed Azure Resources
+
+| Resource | Name | Details |
+|----------|------|---------|
+| Resource Group | `rg-bpa-swedencentral` | Sweden Central |
+| PostgreSQL Flexible Server | `bpa-postgres-sec` | `bpa-postgres-sec.postgres.database.azure.com`, Standard_B1ms |
+| Database | `bpa` | UTF-8, schema: observation_sessions, process_steps, business_processes |
+| Container Registry | `bparegistrysec` | `bparegistrysec.azurecr.io`, Basic SKU |
+| Container Apps Environment | `bpa-env` | Consumption workload profile |
+| Container App | `bpa-agent` | `https://bpa-agent.agreeableocean-6db266b7.swedencentral.azurecontainerapps.io/` |
+| AI Services | `PT-AzureAIFoundry-SweCent` | Foundry endpoint, gpt-4.1-mini deployment |
+
+The Container App uses a system-assigned managed identity with **Cognitive Services OpenAI User** role on the AI Services resource.
 
 ## License
 
